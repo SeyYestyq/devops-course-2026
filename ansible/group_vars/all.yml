@@ -1,0 +1,8 @@
+---
+app_image: "ghcr.io/seyyestyq/devops-ci-app"
+# Полный SHA зелёного коммита из практической работы № 10.
+# Подставить тег со страницы пакета GHCR перед первым запуском. Тег latest не используется.
+app_tag: "a77e53f0fbc15eac3e9f11b760743c230db9f4f1"
+app_container_name: "devops-ci-app"
+app_host_port: 5000
+app_internal_port: 5000
