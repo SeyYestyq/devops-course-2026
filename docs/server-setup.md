@@ -63,3 +63,27 @@ location /app/ {
 | **`05-docker-compose`** | По завершении ПР № 7 | Docker Engine установлен, приложение и PostgreSQL работают в Compose, данные сохраняются в томе `db_data`, приложение доступно через Nginx по адресу `https://devops.local/app/`. |
 | **`06-before-kr2`** | Перед началом КР № 2 | Контрольная точка исходного состояния перед выполнением контрольной работы № 2. |
 | **`07-kr2`** | По завершении КР № 2 | Развёрнуты сервисы `app` (порт 8001) и `redis` (с томом `redis_data`), настроен виртуальный хост `https://api.devops.local/`, сертификат `kr2.crt`, аудит пройден (код 0). |
+
+---
+
+## 11. Ansible (Практическая работа № 11)
+
+Нумерация продолжает уже существующий раздел 10 (снимки VirtualBox). Содержание соответствует разделу Ansible из методички.
+
+* **Расположение проекта:** `ansible/` в репозитории `devops-course-2026`, ветка `feature/ansible`. Запуск выполняется из каталога `ansible/`, где лежит `ansible.cfg`.
+* **Управляющий узел:** хостовая система (macOS) с Ansible. Коллекции ставятся командой `ansible-galaxy collection install -r ansible/requirements.yml`.
+* **Управляемый узел:** VM `devops-vm`, Ubuntu Server 24.04, Host-only адрес `192.168.56.101`, SSH на порту 22. Перед работой VM возвращается к снимку `01-clean-install`.
+* **Inventory:**
+  * `inventory/bootstrap.ini` — первый запуск от `student` (`--ask-pass --ask-become-pass`);
+  * `inventory/prod.ini` — последующие запуски от `devops` по ключу `~/.ssh/devops_vm`, без интерактивного пароля. Этот файл выбран в `ansible.cfg`.
+* **Учётные записи:** `student` только для первичного доступа. `devops` создаётся ролью `ssh`, получает открытый ключ и `NOPASSWD` через `/etc/sudoers.d/devops`. Закрытый ключ и пароли в репозиторий не входят.
+* **Роли:**
+  * `base` — проверка ОС, базовые пакеты, официальный репозиторий Docker, служба Docker, `python3-requests` и `python3-debian` на VM;
+  * `ssh` — пользователь `devops`, ключ, sudo, hardening SSH (`00-ansible-hardening.conf`), UFW (22 и 80);
+  * `nginx` — reverse proxy на порт приложения, отключение сайта по умолчанию;
+  * `app` — загрузка образа GHCR по полному SHA, контейнер, проверка `/health`.
+* **Образ:** `ghcr.io/seyyestyq/devops-ci-app`. Тег `app_tag` в `group_vars/all.yml` задаётся полным SHA зелёного коммита из практической работы № 10 (a77e53f0fbc15eac3e9f11b760743c230db9f4f1). Тег `latest` для деплоя не используется.
+* **Порты:** контейнер публикуется как `127.0.0.1:5000:5000`. Снаружи открыт порт 80 (Nginx). Health endpoint приложения: `http://127.0.0.1:5000/health`, с управляющего узла: `http://192.168.56.101/health`.
+* **Первичный запуск:** `ansible-playbook -i inventory/bootstrap.ini site.yml --ask-pass --ask-become-pass`
+* **Повторный запуск:** `ansible-playbook site.yml` (inventory `prod.ini` из `ansible.cfg`). Повтор без drift должен дать `changed=0`.
+* **Read-only аудит:** `ansible-playbook verify.yml`. Плейбук не меняет конфигурацию. Остановленный контейнер должен приводить к отказу проверки.
